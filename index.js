@@ -137,6 +137,39 @@ app.post('/login', (req, res) => {
   });
 });
 
+// Register Route for New Users
+app.post('/register', (req, res) => {
+  const { username, password } = req.body;
+
+  // Basic validation
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Please provide username and password' });
+  }
+
+  // Check if user already exists
+  const checkUserQuery = 'SELECT * FROM users WHERE username = ?';
+  connection.query(checkUserQuery, [username], (err, results) => {
+    if (err) {
+      console.error('Error checking existing user:', err);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+
+    if (results.length > 0) {
+      return res.status(409).json({ message: 'Username already exists' });
+    }
+
+    // Insert new user
+    const insertUserQuery = 'INSERT INTO users (username, password) VALUES (?, ?)';
+    connection.query(insertUserQuery, [username, password], (err, result) => {
+      if (err) {
+        console.error('Error inserting new user:', err);
+        return res.status(500).json({ message: 'Internal server error' });
+      }
+
+      res.status(201).json({ message: 'User registered successfully!' });
+    });
+  });
+});
 
 // Start Server
 app.listen(PORT, () => {
