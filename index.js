@@ -206,7 +206,61 @@
     });
   });
 });
+//to get the borrowedBooks in the database
+app.get('/users/:username/borrowed-books', (req, res) => {
+  const { username } = req.params;
 
+  const query = 'SELECT borrowedBooks FROM users WHERE username = ?';
+  connection.query(query, [username], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Error retrieving borrowed books' });
+    if (results.length === 0) return res.status(404).json({ message: 'User not found' });
+
+    const borrowedBooks = results[0].borrowedBooks || '';
+    const borrowedList = borrowedBooks ? borrowedBooks.split(',').map(book => book.trim()) : [];
+
+    res.status(200).json({ borrowedBooks: borrowedList });
+  });
+});
+
+app.put('/users/:username/return-book', (req, res) => {
+  const { username } = req.params;
+  const { bookTitle } = req.body;
+
+  if (!bookTitle) return res.status(400).json({ message: 'Missing book title' });
+
+  // Step 1: Get current borrowedBooks list
+  const selectUser = 'SELECT borrowedBooks FROM users WHERE username = ?';
+  connection.query(selectUser, [username], (err, results) => {
+    if (err || results.length === 0) {
+      return res.status(500).json({ message: 'Error fetching user data' });
+    }
+
+    const currentList = results[0].borrowedBooks || '';
+    const updatedList = currentList
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t !== bookTitle)
+      .join(', ');
+
+    // Step 2: Update user table
+    const updateUser = 'UPDATE users SET borrowedBooks = ? WHERE username = ?';
+    connection.query(updateUser, [updatedList, username], (err2) => {
+      if (err2) {
+        return res.status(500).json({ message: 'Error updating user data' });
+      }
+
+      // Step 3: Set isBorrowed = false in books table
+      const updateBook = 'UPDATE books SET isBorrowed = 0 WHERE title = ?';
+      connection.query(updateBook, [bookTitle], (err3) => {
+        if (err3) {
+          return res.status(500).json({ message: 'Error updating book status' });
+        }
+
+        return res.status(200).json({ message: 'Book returned successfully' });
+      });
+    });
+  });
+});
 
 
   // Start Server
