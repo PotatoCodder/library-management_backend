@@ -74,28 +74,26 @@
     });
   });
 
-  // 🔍 GET Books Route
-  app.get('/books', (req, res) => {
-    const query = 'SELECT id, title, author, year_published, cover FROM books';
+app.get('/books', (req, res) => {
+  const query = 'SELECT id, title, author, year_published, cover FROM books WHERE isBorrowed = 0 OR isBorrowed IS NULL';
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching books:', err);
+      return res.status(500).json({ message: 'Error retrieving books' });
+    }
 
-    connection.query(query, (err, results) => {
-      if (err) {
-        console.error('Error fetching books:', err);
-        return res.status(500).json({ message: 'Error retrieving books' });
-      }
+    const books = results.map((book) => ({
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      year: book.year_published,
+      cover: book.cover ? `data:image/jpeg;base64,${book.cover.toString('base64')}` : null,
+    }));
 
-      // Convert cover Buffer to base64
-      const books = results.map((book) => ({
-        id: book.id,
-        title: book.title,
-        author: book.author,
-        year: book.year_published,
-        cover: book.cover ? `data:image/jpeg;base64,${book.cover.toString('base64')}` : null,
-      }));
-
-      res.status(200).json(books);
-    });
+    res.status(200).json(books);
   });
+});
+
 
   // Unified Login Route for Admin and Users
   app.post('/login', (req, res) => {
@@ -206,6 +204,7 @@
     });
   });
 });
+
 //to get the borrowedBooks in the database
 app.get('/users/:username/borrowed-books', (req, res) => {
   const { username } = req.params;
